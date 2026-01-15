@@ -1,0 +1,914 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Lượng giá - Khảo sát">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#3b82f6">
+    <meta name="description" content="Ứng dụng lượng giá và khảo sát - Phòng QLCL BV Nhi đồng TP. Cần Thơ">
+    <title>Lượng giá - Khảo sát | BV Nhi đồng Cần Thơ</title>
+
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏥</text></svg>">
+    <link rel="apple-touch-icon"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏥</text></svg>">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <!-- Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+
+    <style>
+        * {
+            -webkit-tap-highlight-color: transparent;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+        }
+
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #2563eb, #7c3aed);
+        }
+
+        .btn-qlcl {
+            background: linear-gradient(135deg, #3b82f6, #06b6d4);
+        }
+
+        .btn-tyc {
+            background: linear-gradient(135deg, #8b5cf6, #ec4899);
+        }
+
+        .star-btn {
+            transition: transform 0.15s;
+        }
+
+        .star-btn:hover {
+            transform: scale(1.2);
+        }
+
+        .slide-up {
+            animation: slideUp 0.3s ease-out;
+        }
+
+        @keyframes slideUp {
+            from {
+                transform: translateY(20px);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .toast {
+            animation: toastIn 0.3s ease-out, toastOut 0.3s ease-in 2.7s;
+        }
+
+        @keyframes toastIn {
+            from {
+                transform: translateY(-100%);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes toastOut {
+            from {
+                opacity: 1;
+            }
+
+            to {
+                opacity: 0;
+            }
+        }
+
+        input,
+        select,
+        textarea {
+            font-size: 16px !important;
+        }
+
+        .spinner {
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            from {
+                transform: rotate(0deg);
+            }
+
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .card-hover {
+            transition: all 0.2s;
+        }
+
+        .card-hover:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+        }
+
+        .safe-bottom {
+            padding-bottom: env(safe-area-inset-bottom, 20px);
+        }
+
+        .safe-top {
+            padding-top: env(safe-area-inset-top, 0px);
+        }
+    </style>
+</head>
+
+<body class="bg-gradient-to-br from-blue-50 via-white to-purple-50 min-h-screen">
+    <div id="app">
+        <div class="min-h-screen flex items-center justify-center">
+            <div class="text-center">
+                <i class="fas fa-spinner spinner text-4xl text-blue-500 mb-4"></i>
+                <p class="text-gray-500">Đang tải ứng dụng...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ===================== FIREBASE CONFIG =====================
+        // ⚠️ THAY ĐỔI CẤU HÌNH FIREBASE CỦA BẠN TẠI ĐÂY
+        const firebaseConfig = {
+            apiKey: "AIzaSyBNIsKl8KHl0-CpwZn-R504uAKvFN6A8AQ",
+            authDomain: "ks-checklist-bvnhidong.firebaseapp.com",
+            databaseURL: "https://ks-checklist-bvnhidong-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "ks-checklist-bvnhidong",
+            storageBucket: "ks-checklist-bvnhidong.firebasestorage.app",
+            messagingSenderId: "1073910974970",
+            appId: "1:1073910974970:web:a9a0f9c360918226357c43"
+        };
+
+        // ===================== DEFAULT ADMIN =====================
+        const DEFAULT_ADMIN = {
+            username: 'admin',
+            password: 'admin@123',
+            name: 'Quản trị viên',
+            role: 'admin'
+        };
+
+        // Initialize Firebase
+        let db;
+        let firebaseReady = false;
+
+        try {
+            if (firebaseConfig.apiKey !== "YOUR_API_KEY") {
+                firebase.initializeApp(firebaseConfig);
+                db = firebase.database();
+                firebaseReady = true;
+            }
+        } catch (error) {
+            console.error('Firebase init error:', error);
+        }
+
+        // ===================== DEFAULT INFO FIELDS =====================
+        const DEFAULT_INFO_FIELDS = [
+            { id: 'customerName', label: 'Tên khách hàng', type: 'text', required: true },
+            { id: 'clinic', label: 'Phòng khám', type: 'select', options: 'clinics', required: true },
+            { id: 'doctorName', label: 'Bác sĩ', type: 'text', required: false },
+            { id: 'surveyorName', label: 'Người khảo sát', type: 'text', required: true }
+        ];
+
+        const LUONG_GIA_INFO_FIELDS = [
+            { id: 'department', label: 'Khoa/Phòng kiểm tra', type: 'text', required: true },
+            { id: 'targetPerson', label: 'Người được giám sát', type: 'text', required: true },
+            { id: 'supervisorName', label: 'Người giám sát', type: 'text', required: true },
+            { id: 'checkDate', label: 'Ngày kiểm tra', type: 'date', required: true }
+        ];
+
+        const LUONG_GIA_CATEGORIES = [
+            { id: 'quy_trinh', name: 'Quy trình', icon: '📋' },
+            { id: '5s', name: '5S', icon: '🏥' },
+            { id: 'scyk', name: 'SCYK', icon: '⚠️' },
+            { id: 'khac', name: 'Khác', icon: '📝' }
+        ];
+
+        // ===================== APP STATE =====================
+        const APP = {
+            currentUser: null,
+            currentModule: 'home',
+            activeSubsystem: 'QLCL',
+            currentSurvey: null,
+            notification: null,
+            loading: false,
+            editingQuestionSet: null,
+            users: [],
+            questionSets: [],
+            surveys: [],
+            clinics: [],
+            config: { telegramBotToken: '', telegramChatId: '', hospitalName: 'Bệnh viện Nhi đồng TP. Cần Thơ' },
+            filterDate: { from: '', to: '' },
+            selectedQuestionSet: null,
+            homeFilter: 'all' // all, survey, luong_gia, luong_gia_quy_trinh, luong_gia_5s, luong_gia_scyk, luong_gia_khac
+        };
+
+        // ===================== UTILITY =====================
+        const showNotification = (msg, type = 'success') => {
+            APP.notification = { message: msg, type };
+            render();
+            setTimeout(() => { APP.notification = null; render(); }, 3000);
+        };
+
+        const showLoading = (show = true) => { APP.loading = show; render(); };
+
+        const hasNegativeFeedback = (s) => s.answers?.some(a => a.type === 'rating' && a.value <= 2);
+
+        const formatDate = (ts) => {
+            if (!ts) return '';
+            const d = ts.toDate ? ts.toDate() : new Date(ts);
+            return d.toLocaleString('vi-VN');
+        };
+
+        const hashPassword = (str) => {
+            let h = 0;
+            for (let i = 0; i < str.length; i++) { h = ((h << 5) - h) + str.charCodeAt(i); h = h & h; }
+            return 'h' + Math.abs(h).toString(16);
+        };
+
+        // ===================== AUTH =====================
+        const initializeAdmin = async () => {
+            try {
+                const snap = await db.ref('users/admin').once('value');
+                if (!snap.exists()) {
+                    await db.ref('users/admin').set({
+                        username: DEFAULT_ADMIN.username,
+                        password: hashPassword(DEFAULT_ADMIN.password),
+                        name: DEFAULT_ADMIN.name,
+                        role: DEFAULT_ADMIN.role,
+                        createdAt: Date.now()
+                    });
+                }
+            } catch (e) { console.error('Init admin:', e); }
+        };
+
+        const login = async (username, password) => {
+            try {
+                showLoading(true);
+                const snap = await db.ref('users').orderByChild('username').equalTo(username.toLowerCase().trim()).once('value');
+                if (!snap.exists()) { showNotification('Tài khoản không tồn tại!', 'error'); return false; }
+                let userData, odId;
+                snap.forEach(child => { odId = child.key; userData = child.val(); });
+                if (userData.password !== hashPassword(password)) { showNotification('Sai mật khẩu!', 'error'); return false; }
+                APP.currentUser = { id: odId, ...userData };
+                APP.activeSubsystem = userData.role === 'admin' ? 'QLCL' : userData.role.toUpperCase();
+                localStorage.setItem('survey_session', JSON.stringify({ odId, username: userData.username }));
+                await loadAllData();
+                showNotification(`Xin chào, ${userData.name}!`);
+                return true;
+            } catch (e) { showNotification('Lỗi đăng nhập!', 'error'); return false; }
+            finally { showLoading(false); }
+        };
+
+        const checkSession = async () => {
+            try {
+                const s = localStorage.getItem('survey_session');
+                if (!s) return false;
+                const { odId } = JSON.parse(s);
+                const snap = await db.ref('users/' + odId).once('value');
+                if (!snap.exists()) { localStorage.removeItem('survey_session'); return false; }
+                APP.currentUser = { id: odId, ...snap.val() };
+                APP.activeSubsystem = APP.currentUser.role === 'admin' ? 'QLCL' : APP.currentUser.role.toUpperCase();
+                return true;
+            } catch (e) { return false; }
+        };
+
+        const logout = () => {
+            APP.currentUser = null;
+            APP.currentModule = 'home';
+            localStorage.removeItem('survey_session');
+            showNotification('Đã đăng xuất!');
+            render();
+        };
+
+        // ===================== USER MANAGEMENT =====================
+        const createUser = async (username, password, name, role) => {
+            try {
+                showLoading(true);
+                const snap = await db.ref('users').orderByChild('username').equalTo(username.toLowerCase().trim()).once('value');
+                if (snap.exists()) { showNotification('Tên đăng nhập đã tồn tại!', 'error'); return false; }
+                const id = username.toLowerCase().trim() + '_' + Date.now();
+                await db.ref('users/' + id).set({
+                    username: username.toLowerCase().trim(),
+                    password: hashPassword(password),
+                    name: name.trim(),
+                    role,
+                    createdAt: Date.now(),
+                    createdBy: APP.currentUser.id
+                });
+                await loadUsers();
+                showNotification('Tạo tài khoản thành công!');
+                return true;
+            } catch (e) { showNotification('Lỗi tạo tài khoản!', 'error'); return false; }
+            finally { showLoading(false); }
+        };
+
+        const deleteUser = async (id) => {
+            if (id === 'admin') { showNotification('Không thể xóa admin gốc!', 'error'); return; }
+            try {
+                await db.ref('users/' + id).remove();
+                await loadUsers();
+                showNotification('Đã xóa!');
+            } catch (e) { showNotification('Lỗi!', 'error'); }
+        };
+
+        const changePassword = async (id, newPwd) => {
+            try {
+                await db.ref('users/' + id).update({ password: hashPassword(newPwd) });
+                showNotification('Đã đổi mật khẩu!');
+            } catch (e) { showNotification('Lỗi!', 'error'); }
+        };
+
+        // ===================== DATA LOADING =====================
+        const loadAllData = async () => {
+            await Promise.all([loadConfig(), loadUsers(), loadClinics(), loadQuestionSets(), loadSurveys()]);
+        };
+
+        const loadConfig = async () => {
+            try {
+                const snap = await db.ref('settings/config').once('value');
+                if (snap.exists()) APP.config = { ...APP.config, ...snap.val() };
+            } catch (e) { }
+        };
+
+        const saveConfig = async () => {
+            try {
+                await db.ref('settings/config').set(APP.config);
+                showNotification('Đã lưu!');
+            } catch (e) { showNotification('Lỗi!', 'error'); }
+        };
+
+        const loadUsers = async () => {
+            try {
+                const snap = await db.ref('users').once('value');
+                APP.users = [];
+                snap.forEach(child => { APP.users.push({ id: child.key, ...child.val() }); });
+                APP.users.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+            } catch (e) { }
+        };
+
+        const loadClinics = async () => {
+            try {
+                const snap = await db.ref('clinics').once('value');
+                APP.clinics = [];
+                snap.forEach(child => { APP.clinics.push({ id: child.key, ...child.val() }); });
+                APP.clinics.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+                if (APP.clinics.length === 0 && APP.currentUser?.role === 'admin') {
+                    const defs = ['Phòng khám Nhi tổng quát', 'Phòng khám Tai Mũi Họng', 'Phòng khám Mắt', 'Phòng khám Da liễu', 'Phòng khám Tim mạch', 'Phòng khám Hô hấp', 'Phòng khám Tiêu hóa', 'Phòng khám Thần kinh', 'Phòng khám Cấp cứu'];
+                    for (const n of defs) await db.ref('clinics').push({ name: n });
+                    await loadClinics();
+                }
+            } catch (e) { }
+        };
+
+        const loadQuestionSets = async () => {
+            try {
+                const snap = await db.ref('questionSets').once('value');
+                APP.questionSets = [];
+                snap.forEach(child => { APP.questionSets.push({ id: child.key, ...child.val() }); });
+                APP.questionSets.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+                if (APP.questionSets.length === 0 && APP.currentUser?.role === 'admin') {
+                    await createDefaultQuestionSets();
+                    await loadQuestionSets();
+                }
+            } catch (e) { }
+        };
+
+        const createDefaultQuestionSets = async () => {
+            const defs = {
+                QLCL: {
+                    name: 'Bộ câu hỏi QLCL mặc định',
+                    type: 'survey',
+                    infoFields: JSON.parse(JSON.stringify(DEFAULT_INFO_FIELDS)),
+                    questions: [
+                        { id: 1, text: 'Thái độ phục vụ của nhân viên y tế', type: 'rating', required: true },
+                        { id: 2, text: 'Thời gian chờ đợi khám bệnh', type: 'rating', required: true },
+                        { id: 3, text: 'Cơ sở vật chất, trang thiết bị', type: 'rating', required: true },
+                        { id: 4, text: 'Hướng dẫn quy trình khám chữa bệnh', type: 'rating', required: true },
+                        { id: 5, text: 'Mức độ hài lòng chung', type: 'rating', required: true },
+                        { id: 6, text: 'Góp ý, đề xuất khác', type: 'text', required: false }
+                    ]
+                },
+                TYC: {
+                    name: 'Bộ câu hỏi TYC mặc định',
+                    type: 'survey',
+                    infoFields: JSON.parse(JSON.stringify(DEFAULT_INFO_FIELDS)),
+                    questions: [
+                        { id: 1, text: 'Quy trình đăng ký khám có thuận tiện không?', type: 'rating', required: true },
+                        { id: 2, text: 'Thái độ của nhân viên tiếp đón', type: 'rating', required: true },
+                        { id: 3, text: 'Bác sĩ giải thích tình trạng bệnh rõ ràng không?', type: 'rating', required: true },
+                        { id: 4, text: 'Thời gian khám có phù hợp không?', type: 'rating', required: true },
+                        { id: 5, text: 'Bạn có giới thiệu người thân đến khám không?', type: 'yesno', required: true },
+                        { id: 6, text: 'Ý kiến đóng góp', type: 'text', required: false }
+                    ]
+                }
+            };
+            for (const [sub, data] of Object.entries(defs)) {
+                await db.ref('questionSets').push({ ...data, subsystem: sub, isDefault: true, createdAt: Date.now() });
+            }
+        };
+
+        const loadSurveys = async () => {
+            try {
+                const snap = await db.ref('surveys').limitToLast(500).once('value');
+                APP.surveys = [];
+                snap.forEach(child => { APP.surveys.push({ id: child.key, ...child.val() }); });
+                APP.surveys.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+            } catch (e) { }
+        };
+
+        const createQuestionSet = async (name, subsystem, questions) => {
+            try {
+                showLoading(true);
+                await db.ref('questionSets').push({ name, subsystem, questions, isDefault: false, createdAt: Date.now() });
+                await loadQuestionSets();
+                showNotification('Đã tạo!');
+                return true;
+            } catch (e) { showNotification('Lỗi!', 'error'); return false; }
+            finally { showLoading(false); }
+        };
+
+        const updateQuestionSet = async (id, data) => {
+            try {
+                await db.ref('questionSets/' + id).update(data);
+                await loadQuestionSets();
+                showNotification('Đã cập nhật!');
+            } catch (e) { showNotification('Lỗi!', 'error'); }
+        };
+
+        const deleteQuestionSet = async (id) => {
+            try {
+                await db.ref('questionSets/' + id).remove();
+                await loadQuestionSets();
+                showNotification('Đã xóa!');
+            } catch (e) { showNotification('Lỗi!', 'error'); }
+        };
+
+        const saveSurvey = async (survey) => {
+            try {
+                showLoading(true);
+                const newRef = await db.ref('surveys').push({ ...survey, timestamp: Date.now(), createdBy: APP.currentUser.id });
+                survey.id = newRef.key;
+                await loadSurveys();
+                return survey;
+            } catch (e) { showNotification('Lỗi!', 'error'); return null; }
+            finally { showLoading(false); }
+        };
+
+        const addClinic = async (name) => { try { await db.ref('clinics').push({ name }); await loadClinics(); showNotification('Đã thêm!'); } catch (e) { showNotification('Lỗi!', 'error'); } };
+        const updateClinic = async (id, name) => { try { await db.ref('clinics/' + id).update({ name }); await loadClinics(); } catch (e) { } };
+        const deleteClinic = async (id) => { try { await db.ref('clinics/' + id).remove(); await loadClinics(); showNotification('Đã xóa!'); } catch (e) { } };
+
+        // ===================== TELEGRAM =====================
+        const sendTelegramAlert = async (survey) => {
+            if (!APP.config.telegramBotToken || !APP.config.telegramChatId) { showNotification('Chưa cấu hình Telegram!', 'error'); return false; }
+            const low = survey.answers.filter(a => a.type === 'rating' && a.value <= 2);
+            const txt = survey.answers.find(a => a.type === 'text' && a.value);
+            const msg = `🚨 *CẢNH BÁO PHẢN HỒI KHÔNG TỐT*\n\n📋 *Phân hệ:* ${survey.subsystem === 'QLCL' ? 'Phòng QLCL' : 'BQL Khám TYC'}\n📝 *Bộ câu hỏi:* ${survey.questionSetName || 'Mặc định'}\n👤 *Khách hàng:* ${survey.customerName}\n🏥 *Phòng khám:* ${survey.clinic}\n👨‍⚕️ *Bác sĩ:* ${survey.doctorName || 'Không có'}\n📝 *Người khảo sát:* ${survey.surveyorName}\n🕐 *Thời gian:* ${new Date().toLocaleString('vi-VN')}\n\n⚠️ *Các mục đánh giá thấp:*\n${low.map(r => `• ${r.question}: ${r.value}/5 ⭐`).join('\n')}${txt ? `\n\n💬 *Góp ý:* ${txt.value}` : ''}`;
+            try {
+                const res = await fetch(`https://api.telegram.org/bot${APP.config.telegramBotToken}/sendMessage`, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ chat_id: APP.config.telegramChatId, text: msg, parse_mode: 'Markdown' })
+                });
+                if (res.ok) {
+                    showNotification('Đã gửi cảnh báo!');
+                    if (survey.id) await db.ref('surveys/' + survey.id).update({ telegramSent: true });
+                    return true;
+                }
+                throw new Error();
+            } catch (e) { showNotification('Lỗi gửi Telegram!', 'error'); return false; }
+        };
+
+        // ===================== EXPORT =====================
+        const exportToCSV = () => {
+            const filtered = getFilteredSurveys();
+            if (filtered.length === 0) { showNotification('Không có dữ liệu!', 'error'); return; }
+            const allQ = new Set();
+            filtered.forEach(s => s.answers?.forEach(a => allQ.add(a.question)));
+            const headers = ['STT', 'Phân hệ', 'Bộ câu hỏi', 'Khách hàng', 'Phòng khám', 'Bác sĩ', 'Người khảo sát', 'Thời gian', ...Array.from(allQ), 'Đã báo cáo'];
+            const rows = filtered.map((s, i) => {
+                const v = {};
+                s.answers?.forEach(a => v[a.question] = a.type === 'rating' ? `${a.value}/5` : (a.value || ''));
+                return [i + 1, s.subsystem, s.questionSetName || '', s.customerName, s.clinic, s.doctorName || '', s.surveyorName, formatDate(s.timestamp), ...Array.from(allQ).map(q => v[q] || ''), s.telegramSent ? 'Có' : 'Không'];
+            });
+            const csv = '\uFEFF' + [headers, ...rows].map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `KhaoSat_${APP.activeSubsystem}_${new Date().toISOString().slice(0, 10)}.csv`;
+            link.click();
+            showNotification('Đã xuất file CSV!');
+        };
+
+        const exportToReport = () => {
+            const filtered = getFilteredSurveys();
+            if (filtered.length === 0) { showNotification('Không có dữ liệu!', 'error'); return; }
+            const stats = getStatistics();
+            const qsName = APP.selectedQuestionSet ? APP.questionSets.find(q => q.id === APP.selectedQuestionSet)?.name : 'Tất cả bộ câu hỏi';
+            const allQ = new Set();
+            filtered.forEach(s => s.answers?.forEach(a => allQ.add(a.question)));
+            const today = new Date().toLocaleDateString('vi-VN');
+
+            const html = `<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Báo cáo khảo sát - ${APP.config.hospitalName}</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Times New Roman', Times, serif; font-size: 12pt; line-height: 1.5; padding: 20mm; }
+        .header { text-align: center; margin-bottom: 20px; }
+        .header h1 { font-size: 14pt; font-weight: bold; text-transform: uppercase; margin-bottom: 5px; }
+        .header h2 { font-size: 13pt; font-weight: bold; margin-bottom: 10px; }
+        .header p { font-size: 12pt; }
+        .info { margin-bottom: 15px; }
+        .info p { margin: 3px 0; }
+        table { width: 100%; border-collapse: collapse; margin: 15px 0; font-size: 11pt; }
+        th, td { border: 1px solid #000; padding: 5px 8px; text-align: left; }
+        th { background: #f0f0f0; font-weight: bold; text-align: center; }
+        td { vertical-align: top; }
+        .text-center { text-align: center; }
+        .text-right { text-align: right; }
+        .stats { margin: 15px 0; }
+        .stats-grid { display: flex; gap: 20px; margin: 10px 0; }
+        .stats-item { padding: 10px; border: 1px solid #ccc; flex: 1; text-align: center; }
+        .footer { margin-top: 30px; display: flex; justify-content: space-between; }
+        .signature { text-align: center; width: 45%; }
+        .signature p { margin: 5px 0; }
+        @media print { body { padding: 10mm; } }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>${APP.config.hospitalName}</h1>
+        <h2>BÁO CÁO KHẢO SÁT KHÁCH HÀNG</h2>
+        <p><strong>Bộ câu hỏi:</strong> ${qsName}</p>
+        <p><strong>Phân hệ:</strong> ${APP.activeSubsystem === 'QLCL' ? 'Phòng Quản lý Chất lượng' : 'Ban Quản lý Khám theo yêu cầu'}</p>
+    </div>
+    
+    <div class="info">
+        <p><strong>Ngày xuất báo cáo:</strong> ${today}</p>
+        <p><strong>Thời gian khảo sát:</strong> ${APP.filterDate.from ? new Date(APP.filterDate.from).toLocaleDateString('vi-VN') : 'Không giới hạn'} - ${APP.filterDate.to ? new Date(APP.filterDate.to).toLocaleDateString('vi-VN') : 'Đến nay'}</p>
+    </div>
+    
+    <div class="stats">
+        <p><strong>THỐNG KÊ TỔNG QUAN:</strong></p>
+        <table>
+            <tr><th>Tổng số phiếu</th><th>Phản hồi không tốt</th><th>Tỷ lệ hài lòng</th></tr>
+            <tr>
+                <td class="text-center">${stats?.total || 0}</td>
+                <td class="text-center">${stats?.negative || 0}</td>
+                <td class="text-center">${stats?.total ? ((1 - stats.negative / stats.total) * 100).toFixed(1) : 0}%</td>
+            </tr>
+        </table>
+        ${stats && Object.keys(stats.avgRatings).length > 0 ? `
+        <p><strong>ĐIỂM TRUNG BÌNH THEO TIÊU CHÍ:</strong></p>
+        <table>
+            <tr><th style="width:70%">Tiêu chí</th><th>Điểm TB (thang 5)</th></tr>
+            ${Object.entries(stats.avgRatings).map(([k, v]) => `<tr><td>${k}</td><td class="text-center">${v}</td></tr>`).join('')}
+        </table>` : ''}
+    </div>
+    
+    <p><strong>CHI TIẾT CÁC PHIẾU KHẢO SÁT:</strong></p>
+    <table>
+        <tr>
+            <th style="width:30px">STT</th>
+            <th>Khách hàng</th>
+            <th>Phòng khám</th>
+            <th>Bác sĩ</th>
+            <th>Người KS</th>
+            <th>Thời gian</th>
+            ${Array.from(allQ).map(q => `<th>${q}</th>`).join('')}
+        </tr>
+        ${filtered.map((s, i) => {
+                const v = {};
+                s.answers?.forEach(a => v[a.question] = a.type === 'rating' ? `${a.value}/5` : (a.value || '-'));
+                return `<tr>
+                <td class="text-center">${i + 1}</td>
+                <td>${s.customerName}</td>
+                <td>${s.clinic}</td>
+                <td>${s.doctorName || '-'}</td>
+                <td>${s.surveyorName}</td>
+                <td>${formatDate(s.timestamp)}</td>
+                ${Array.from(allQ).map(q => `<td class="text-center">${v[q] || '-'}</td>`).join('')}
+            </tr>`;
+            }).join('')}
+    </table>
+    
+    <div class="footer">
+        <div class="signature">
+            <p><strong>Người lập báo cáo</strong></p>
+            <p style="margin-top: 50px;">${APP.currentUser?.name || ''}</p>
+        </div>
+        <div class="signature">
+            <p><strong>Xác nhận của lãnh đạo</strong></p>
+            <p style="margin-top: 50px;">...........................</p>
+        </div>
+    </div>
+</body>
+</html>`;
+
+            const blob = new Blob([html], { type: 'text/html;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `BaoCao_KhaoSat_${APP.activeSubsystem}_${new Date().toISOString().slice(0, 10)}.html`;
+            link.click();
+            showNotification('Đã xuất báo cáo! Mở file và in (Ctrl+P) để lưu PDF.');
+        };
+
+        // ===================== HELPERS =====================
+        const getFilteredSurveys = () => APP.surveys.filter(s => {
+            if (s.subsystem !== APP.activeSubsystem) return false;
+            if (APP.selectedQuestionSet && s.questionSetId !== APP.selectedQuestionSet) return false;
+            if (APP.filterDate.from) { const d = s.timestamp?.toDate ? s.timestamp.toDate() : new Date(s.timestamp); if (d < new Date(APP.filterDate.from)) return false; }
+            if (APP.filterDate.to) { const d = s.timestamp?.toDate ? s.timestamp.toDate() : new Date(s.timestamp); if (d > new Date(APP.filterDate.to + 'T23:59:59')) return false; }
+            return true;
+        });
+
+        const getStatistics = () => {
+            const f = getFilteredSurveys();
+            if (f.length === 0) return null;
+            const stats = { total: f.length, negative: f.filter(hasNegativeFeedback).length, avgRatings: {} };
+            const rq = {};
+            f.forEach(s => s.answers?.filter(a => a.type === 'rating').forEach(a => { if (!rq[a.question]) rq[a.question] = []; if (a.value > 0) rq[a.question].push(a.value); }));
+            for (const [q, v] of Object.entries(rq)) stats.avgRatings[q] = v.length > 0 ? (v.reduce((a, b) => a + b, 0) / v.length).toFixed(2) : 0;
+            return stats;
+        };
+
+        const getSubsystemQuestionSets = () => APP.questionSets.filter(qs => qs.subsystem === APP.activeSubsystem);
+
+        // ===================== ACTIONS =====================
+        window.startNewSurvey = (qsId) => {
+            const qs = APP.questionSets.find(q => q.id === qsId);
+            if (!qs) { showNotification('Không tìm thấy!', 'error'); return; }
+            const infoFields = qs.infoFields || DEFAULT_INFO_FIELDS;
+            const infoData = {};
+            infoFields.forEach(f => { infoData[f.id] = f.type === 'date' ? '' : ''; });
+            APP.currentSurvey = {
+                subsystem: APP.activeSubsystem, questionSetId: qs.id, questionSetName: qs.name,
+                infoData,
+                answers: qs.questions.map(q => ({ questionId: q.id, question: q.text, type: q.type, value: q.type === 'rating' ? 0 : '' })),
+                telegramSent: false
+            };
+            APP.currentModule = 'survey';
+            render();
+        };
+
+        window.submitSurvey = async () => {
+            const s = APP.currentSurvey;
+            const qs = APP.questionSets.find(q => q.id === s.questionSetId);
+            const infoFields = qs?.infoFields || DEFAULT_INFO_FIELDS;
+            const missingInfo = infoFields.filter(f => f.required && !s.infoData?.[f.id]);
+            if (missingInfo.length > 0) { showNotification(`Điền đầy đủ: ${missingInfo.map(f => f.label).join(', ')}!`, 'error'); return; }
+            const req = qs?.questions.filter(q => q.required) || [];
+            const un = req.filter(q => { const a = s.answers.find(a => a.questionId === q.id); return !a?.value || a.value === 0; });
+            if (un.length > 0) { showNotification('Trả lời tất cả câu hỏi bắt buộc!', 'error'); return; }
+            if (qs?.type === 'luong_gia' && !s.conclusion) { showNotification('Vui lòng chọn kết luận!', 'error'); return; }
+            const saved = await saveSurvey(s);
+            if (saved) {
+                APP.currentSurvey = saved;
+                showNotification('Đã lưu phiếu thành công!');
+                render();
+            }
+        };
+
+        window.handleTelegramSend = async () => { await sendTelegramAlert(APP.currentSurvey); APP.currentSurvey = null; APP.currentModule = 'home'; render(); };
+        window.setRating = (qId, v) => { const a = APP.currentSurvey.answers.find(a => a.questionId === qId); if (a) a.value = v; render(); };
+        window.setYesNo = (qId, v) => { const a = APP.currentSurvey.answers.find(a => a.questionId === qId); if (a) a.value = v; render(); };
+        window.setTextAnswer = (qId, v) => { const a = APP.currentSurvey.answers.find(a => a.questionId === qId); if (a) a.value = v; };
+        window.setInfoField = (fieldId, value) => { if (!APP.currentSurvey.infoData) APP.currentSurvey.infoData = {}; APP.currentSurvey.infoData[fieldId] = value; };
+        window.setAnswerNote = (qId, note) => { const a = APP.currentSurvey.answers.find(a => a.questionId === qId); if (a) a.note = note; };
+
+        window.sendTelegramById = async (surveyId) => {
+            const survey = APP.surveys.find(s => s.id === surveyId);
+            if (!survey) { showNotification('Không tìm thấy phiếu!', 'error'); return; }
+            const ok = await sendTelegramAlert(survey);
+            if (ok) { await loadSurveys(); render(); }
+        };
+
+        // ===================== RENDERS =====================
+        const renderStars = (v, qId) => {
+            const l = ['Rất không hài lòng', 'Không hài lòng', 'Bình thường', 'Hài lòng', 'Rất hài lòng'];
+            return `<div class="flex flex-col items-center gap-2"><div class="flex gap-1">${[1, 2, 3, 4, 5].map(i => `<button type="button" onclick="setRating(${qId}, ${i})" class="star-btn text-3xl ${i <= v ? 'text-yellow-400' : 'text-gray-300'} hover:text-yellow-400">${i <= v ? '★' : '☆'}</button>`).join('')}</div>${v > 0 ? `<span class="text-sm font-medium ${v <= 2 ? 'text-red-500' : v === 3 ? 'text-yellow-600' : 'text-green-500'}">${l[v - 1]}</span>` : ''}</div>`;
+        };
+
+        const renderYesNo = (v, qId) => `<div class="flex gap-4 justify-center"><button type="button" onclick="setYesNo(${qId}, 'yes')" class="px-6 py-3 rounded-xl font-medium transition-all ${v === 'yes' ? 'bg-green-500 text-white shadow-lg scale-105' : 'bg-gray-100 text-gray-600 hover:bg-green-100'}"><i class="fas fa-check mr-2"></i>Có</button><button type="button" onclick="setYesNo(${qId}, 'no')" class="px-6 py-3 rounded-xl font-medium transition-all ${v === 'no' ? 'bg-red-500 text-white shadow-lg scale-105' : 'bg-gray-100 text-gray-600 hover:bg-red-100'}"><i class="fas fa-times mr-2"></i>Không</button></div>`;
+
+        const renderLogin = () => `
+            <div class="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-blue-500 to-purple-600">
+                <div class="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-md slide-up">
+                    <div class="text-center mb-8">
+                        <div class="w-20 h-20 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg"><i class="fas fa-hospital text-white text-3xl"></i></div>
+                        <h1 class="text-2xl font-bold text-gray-800">Lượng giá - Khảo sát</h1>
+                        <p class="text-gray-500">${APP.config.hospitalName}</p>
+                        <p class="text-sm text-gray-400 mt-1">Phòng Quản lý Chất lượng</p>
+                        <p class="text-xs text-gray-400">Tác giả: BS. Kiều Việt Tiến Hưng</p>
+                    </div>
+                    <div class="space-y-4">
+                        <div><label class="block text-sm font-medium text-gray-600 mb-1">Tên đăng nhập</label><input type="text" id="loginUsername" placeholder="Nhập tên đăng nhập..." class="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500"></div>
+                        <div><label class="block text-sm font-medium text-gray-600 mb-1">Mật khẩu</label><div class="relative"><input type="password" id="loginPassword" placeholder="Nhập mật khẩu..." onkeypress="if(event.key==='Enter') handleLogin();" class="w-full p-3 border border-gray-200 rounded-xl pr-10"><button type="button" onclick="togglePwd('loginPassword')" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"><i class="fas fa-eye"></i></button></div></div>
+                        <button onclick="handleLogin()" class="w-full py-4 btn-primary text-white rounded-xl font-bold text-lg hover:shadow-lg"><i class="fas fa-sign-in-alt mr-2"></i>Đăng nhập</button>
+                    </div>
+                    <div class="mt-6 p-4 bg-amber-50 rounded-xl border border-amber-200"><p class="text-sm text-amber-700 text-center"><i class="fas fa-info-circle mr-1"></i><strong>Tài khoản mặc định:</strong><br>Username: <code class="bg-amber-100 px-1 rounded">admin</code> | Password: <code class="bg-amber-100 px-1 rounded">admin@123</code></p></div>
+                </div>
+            </div>
+        `;
+
+        window.togglePwd = (id) => { const i = document.getElementById(id); const ic = i.nextElementSibling.querySelector('i'); if (i.type === 'password') { i.type = 'text'; ic.className = 'fas fa-eye-slash'; } else { i.type = 'password'; ic.className = 'fas fa-eye'; } };
+        window.handleLogin = async () => { const u = document.getElementById('loginUsername').value; const p = document.getElementById('loginPassword').value; if (!u || !p) { showNotification('Nhập đầy đủ!', 'error'); return; } await login(u, p); render(); };
+
+        const renderHome = () => {
+            const svs = APP.surveys.filter(s => s.subsystem === APP.activeSubsystem);
+            const neg = svs.filter(hasNegativeFeedback);
+            const allQSets = getSubsystemQuestionSets();
+
+            // Filter question sets based on homeFilter
+            let filteredQSets = allQSets;
+            if (APP.homeFilter === 'survey') {
+                filteredQSets = allQSets.filter(qs => qs.type !== 'luong_gia');
+            } else if (APP.homeFilter === 'luong_gia') {
+                filteredQSets = allQSets.filter(qs => qs.type === 'luong_gia');
+            } else if (APP.homeFilter.startsWith('luong_gia_')) {
+                const cat = APP.homeFilter.replace('luong_gia_', '');
+                filteredQSets = allQSets.filter(qs => qs.type === 'luong_gia' && qs.luongGiaCategory === cat);
+            }
+
+            const getQsLabel = (qs) => {
+                if (qs.type === 'luong_gia') {
+                    const cat = LUONG_GIA_CATEGORIES.find(c => c.id === qs.luongGiaCategory);
+                    return cat ? `${cat.icon} ${cat.name}` : '📊 Lượng giá';
+                }
+                return '📋 Khảo sát';
+            };
+
+            return `<div class="space-y-4 slide-up"><div class="grid grid-cols-2 gap-3"><div class="bg-white rounded-2xl shadow-lg p-4 text-center card-hover"><div class="text-3xl font-bold text-blue-600">${svs.length}</div><div class="text-sm text-gray-500">Tổng phiếu</div></div><div class="bg-white rounded-2xl shadow-lg p-4 text-center card-hover"><div class="text-3xl font-bold text-red-600">${neg.length}</div><div class="text-sm text-gray-500">Phản hồi xấu</div></div></div><div class="bg-white rounded-2xl shadow-lg p-4"><h3 class="font-bold text-gray-800 mb-3 flex items-center gap-2"><i class="fas fa-clipboard-list ${APP.activeSubsystem === 'QLCL' ? 'text-blue-500' : 'text-purple-500'}"></i>Chọn bộ câu hỏi</h3><select onchange="APP.homeFilter = this.value; render();" class="w-full p-2 border border-gray-200 rounded-xl mb-3 text-sm"><option value="all" ${APP.homeFilter === 'all' ? 'selected' : ''}>📁 Tất cả</option><option value="survey" ${APP.homeFilter === 'survey' ? 'selected' : ''}>📋 Khảo sát</option><option value="luong_gia" ${APP.homeFilter === 'luong_gia' ? 'selected' : ''}>📊 Lượng giá (tất cả)</option>${LUONG_GIA_CATEGORIES.map(c => `<option value="luong_gia_${c.id}" ${APP.homeFilter === 'luong_gia_' + c.id ? 'selected' : ''}>&nbsp;&nbsp;&nbsp;${c.icon} ${c.name}</option>`).join('')}</select>${filteredQSets.length === 0 ? `<div class="text-center py-8 text-gray-400"><i class="fas fa-folder-open text-4xl mb-2 opacity-50"></i><p>Chưa có bộ câu hỏi</p></div>` : `<div class="space-y-3">${filteredQSets.map(qs => `<div class="p-4 bg-gradient-to-r ${APP.activeSubsystem === 'QLCL' ? 'from-blue-50 to-cyan-50 border-blue-200' : 'from-purple-50 to-pink-50 border-purple-200'} border rounded-xl card-hover"><div class="flex items-center justify-between"><div><h4 class="font-semibold text-gray-800">${qs.name}</h4><p class="text-sm text-gray-500">${qs.questions?.length || 0} ${qs.type === 'luong_gia' ? 'nội dung' : 'câu hỏi'} • ${getQsLabel(qs)}</p></div><button onclick="startNewSurvey('${qs.id}')" class="px-4 py-2 ${APP.activeSubsystem === 'QLCL' ? 'btn-qlcl' : 'btn-tyc'} text-white rounded-xl font-medium hover:shadow-lg"><i class="fas fa-play mr-1"></i>${qs.type === 'luong_gia' ? 'Bắt đầu' : 'Khảo sát'}</button></div></div>`).join('')}</div>`}</div>${svs.length > 0 ? `<div class="bg-white rounded-2xl shadow-lg p-4"><h3 class="font-bold text-gray-800 mb-3 flex items-center gap-2"><i class="fas fa-history text-green-500"></i>Gần đây</h3><div class="space-y-2 max-h-48 overflow-y-auto">${svs.slice(0, 5).map(s => `<div class="p-3 rounded-xl ${hasNegativeFeedback(s) ? 'bg-red-50 border border-red-200' : 'bg-gray-50'}"><div class="flex justify-between items-start"><div><div class="font-medium text-gray-800">${s.infoData?.customerName || s.infoData?.department || s.customerName || 'N/A'}</div><div class="text-xs text-gray-500">${s.infoData?.clinic || s.infoData?.supervisorName || s.clinic || ''}</div></div><div class="text-xs text-gray-400">${formatDate(s.timestamp)}</div></div></div>`).join('')}</div></div>` : ''}</div>`;
+        };
+
+        const renderSurveyForm = () => {
+            const s = APP.currentSurvey;
+            const isSaved = !!s.id;
+            const qs = APP.questionSets.find(q => q.id === s.questionSetId);
+            const infoFields = qs?.infoFields || DEFAULT_INFO_FIELDS;
+            const isLuongGia = qs?.type === 'luong_gia';
+            const luongGiaCat = LUONG_GIA_CATEGORIES.find(c => c.id === qs?.luongGiaCategory);
+            const typeLabel = isLuongGia ? `Lượng giá${luongGiaCat ? ' - ' + luongGiaCat.name : ''}` : 'Khảo sát';
+
+            const renderInfoField = (field) => {
+                const val = s.infoData?.[field.id] || '';
+                const reqMark = field.required ? '<span class="text-red-500">*</span>' : '';
+
+                if (field.type === 'select' && field.options === 'clinics') {
+                    return `<div><label class="block text-sm font-medium text-gray-600 mb-1">${field.label} ${reqMark}</label><select onchange="setInfoField('${field.id}', this.value)" class="w-full p-3 border border-gray-200 rounded-xl"><option value="">-- Chọn --</option>${APP.clinics.map(c => `<option value="${c.name}" ${val === c.name ? 'selected' : ''}>${c.name}</option>`).join('')}</select></div>`;
+                } else if (field.type === 'date') {
+                    return `<div><label class="block text-sm font-medium text-gray-600 mb-1">${field.label} ${reqMark}</label><input type="date" value="${val}" onchange="setInfoField('${field.id}', this.value)" class="w-full p-3 border border-gray-200 rounded-xl"></div>`;
+                } else if (field.type === 'number') {
+                    return `<div><label class="block text-sm font-medium text-gray-600 mb-1">${field.label} ${reqMark}</label><input type="number" value="${val}" onchange="setInfoField('${field.id}', this.value)" placeholder="Nhập số..." class="w-full p-3 border border-gray-200 rounded-xl"></div>`;
+                } else {
+                    return `<div><label class="block text-sm font-medium text-gray-600 mb-1">${field.label} ${reqMark}</label><input type="text" value="${val}" onchange="setInfoField('${field.id}', this.value)" placeholder="Nhập..." class="w-full p-3 border border-gray-200 rounded-xl"></div>`;
+                }
+            };
+
+            const renderQuestionWithNote = (q, i, a) => {
+                const noteVal = a?.note || '';
+                return `<div class="pb-4 border-b border-gray-100 last:border-0">
+                    <p class="font-medium text-gray-800 mb-3"><span class="inline-flex items-center justify-center w-6 h-6 ${APP.activeSubsystem === 'QLCL' ? 'bg-blue-100 text-blue-600' : 'bg-purple-100 text-purple-600'} rounded-full text-sm mr-2">${i + 1}</span>${q.text}${q.required ? '<span class="text-red-500 ml-1">*</span>' : ''}</p>
+                    ${q.type === 'rating' ? renderStars(a?.value || 0, q.id) : ''}
+                    ${q.type === 'yesno' ? renderYesNo(a?.value || '', q.id) : ''}
+                    ${q.type === 'text' ? `<textarea onchange="setTextAnswer(${q.id}, this.value)" placeholder="Nhập ý kiến..." class="w-full p-3 border border-gray-200 rounded-xl" rows="3">${a?.value || ''}</textarea>` : ''}
+                    ${isLuongGia ? `<div class="mt-2"><input type="text" value="${noteVal}" onchange="setAnswerNote(${q.id}, this.value)" placeholder="Ghi chú..." class="w-full p-2 border border-gray-200 rounded-lg text-sm bg-gray-50"></div>` : ''}
+                </div>`;
+            };
+
+            const conclusionOptions = ['Đạt', 'Không đạt', 'Cần cải thiện', 'Tốt', 'Xuất sắc'];
+            const conclusionVal = s.conclusion || '';
+
+            return `<div class="space-y-4 slide-up"><div class="bg-gradient-to-r ${APP.activeSubsystem === 'QLCL' ? 'from-blue-500 to-cyan-500' : 'from-purple-500 to-pink-500'} rounded-2xl p-4 text-white"><h3 class="font-bold text-lg">${qs?.name || typeLabel}</h3><p class="text-sm opacity-90">${APP.activeSubsystem === 'QLCL' ? 'Phòng QLCL' : 'BQL Khám TYC'} • ${typeLabel}</p></div><div class="bg-white rounded-2xl shadow-lg p-4"><h3 class="font-bold text-gray-800 mb-4 flex items-center gap-2"><i class="fas fa-info-circle text-blue-500"></i>Thông tin</h3><div class="space-y-3">${infoFields.map(f => renderInfoField(f)).join('')}</div></div><div class="bg-white rounded-2xl shadow-lg p-4"><h3 class="font-bold text-gray-800 mb-4 flex items-center gap-2"><i class="fas fa-clipboard-list text-green-500"></i>${isLuongGia ? 'Nội dung lượng giá' : 'Câu hỏi'}</h3><div class="space-y-6">${qs?.questions.map((q, i) => { const a = s.answers.find(a => a.questionId === q.id); return renderQuestionWithNote(q, i, a); }).join('')}</div></div>${isLuongGia ? `<div class="bg-white rounded-2xl shadow-lg p-4"><h3 class="font-bold text-gray-800 mb-4 flex items-center gap-2"><i class="fas fa-clipboard-check text-purple-500"></i>Kết luận <span class="text-red-500">*</span></h3><div class="space-y-3"><select onchange="APP.currentSurvey.conclusion = this.value;" class="w-full p-3 border border-gray-200 rounded-xl"><option value="">-- Chọn kết luận --</option>${conclusionOptions.map(opt => `<option value="${opt}" ${conclusionVal === opt ? 'selected' : ''}>${opt}</option>`).join('')}</select><textarea onchange="APP.currentSurvey.conclusionNote = this.value;" placeholder="Ghi chú kết luận (nếu có)..." class="w-full p-3 border border-gray-200 rounded-xl" rows="2">${s.conclusionNote || ''}</textarea></div></div>` : ''}${!isSaved ? `<div class="flex gap-3"><button onclick="APP.currentSurvey = null; APP.currentModule = 'home'; render();" class="flex-1 py-3 bg-gray-100 text-gray-600 rounded-xl font-medium hover:bg-gray-200">Hủy</button><button onclick="submitSurvey()" class="flex-1 py-3 ${APP.activeSubsystem === 'QLCL' ? 'btn-qlcl' : 'btn-tyc'} text-white rounded-xl font-medium hover:shadow-lg flex items-center justify-center gap-2"><i class="fas fa-save"></i>Lưu</button></div>` : `<div class="bg-green-50 border border-green-200 rounded-2xl p-4"><div class="flex items-center gap-3 mb-3"><i class="fas fa-check-circle text-green-500 text-xl"></i><span class="font-bold text-green-700">Đã lưu phiếu thành công!</span></div><p class="text-gray-600 text-sm mb-3">Bạn có muốn gửi thông tin qua Telegram không?</p><button onclick="handleTelegramSend()" class="w-full py-3 bg-blue-500 text-white rounded-xl font-medium hover:bg-blue-600 flex items-center justify-center gap-2"><i class="fab fa-telegram"></i>Gửi qua Telegram</button><button onclick="APP.currentSurvey = null; APP.currentModule = 'home'; render();" class="w-full py-2 mt-2 text-gray-500 text-sm hover:text-gray-700">Bỏ qua, về trang chủ</button></div>`}</div>`;
+        };
+
+        const renderResults = () => {
+            const stats = getStatistics();
+            const filtered = getFilteredSurveys();
+            const qSets = getSubsystemQuestionSets();
+            const getInfoDisplay = (s) => {
+                const d = s.infoData || {};
+                const name = d.customerName || d.department || d.targetPerson || s.customerName || 'N/A';
+                const sub = d.clinic || d.supervisorName || s.clinic || '';
+                return { name, sub };
+            };
+            const getConclusionBadge = (c) => {
+                if (!c) return '';
+                const colors = { 'Đạt': 'bg-green-100 text-green-700', 'Không đạt': 'bg-red-100 text-red-700', 'Cần cải thiện': 'bg-yellow-100 text-yellow-700', 'Tốt': 'bg-blue-100 text-blue-700', 'Xuất sắc': 'bg-purple-100 text-purple-700' };
+                return `<span class="text-xs px-2 py-0.5 rounded-full ${colors[c] || 'bg-gray-100 text-gray-700'}">${c}</span>`;
+            };
+            const conclusionStats = {};
+            filtered.forEach(s => { if (s.conclusion) { conclusionStats[s.conclusion] = (conclusionStats[s.conclusion] || 0) + 1; } });
+            return `<div class="space-y-4 slide-up"><div class="bg-white rounded-2xl shadow-lg p-4"><h3 class="font-bold text-gray-800 mb-3 flex items-center gap-2"><i class="fas fa-filter text-blue-500"></i>Bộ lọc</h3><div class="space-y-3"><select onchange="APP.selectedQuestionSet = this.value || null; render();" class="w-full p-2 border border-gray-200 rounded-xl"><option value="">Tất cả</option>${qSets.map(qs => `<option value="${qs.id}" ${APP.selectedQuestionSet === qs.id ? 'selected' : ''}>${qs.name}</option>`).join('')}</select><div class="flex flex-wrap gap-3"><div class="flex-1 min-w-32"><label class="block text-xs text-gray-500 mb-1">Từ ngày</label><input type="date" value="${APP.filterDate.from}" onchange="APP.filterDate.from = this.value; render();" class="w-full p-2 border border-gray-200 rounded-xl"></div><div class="flex-1 min-w-32"><label class="block text-xs text-gray-500 mb-1">Đến ngày</label><input type="date" value="${APP.filterDate.to}" onchange="APP.filterDate.to = this.value; render();" class="w-full p-2 border border-gray-200 rounded-xl"></div><button onclick="APP.filterDate = {from: '', to: ''}; APP.selectedQuestionSet = null; render();" class="px-4 py-2 bg-gray-100 text-gray-600 rounded-xl self-end hover:bg-gray-200">Xóa</button></div></div></div>${stats ? `<div class="bg-white rounded-2xl shadow-lg p-4"><h3 class="font-bold text-gray-800 mb-3 flex items-center gap-2"><i class="fas fa-chart-bar text-green-500"></i>Thống kê</h3><div class="grid grid-cols-2 gap-3 mb-4"><div class="bg-blue-50 rounded-xl p-3 text-center"><div class="text-2xl font-bold text-blue-600">${stats.total}</div><div class="text-xs text-blue-600">Tổng</div></div><div class="bg-red-50 rounded-xl p-3 text-center"><div class="text-2xl font-bold text-red-600">${stats.negative}</div><div class="text-xs text-red-600">Xấu</div></div></div>${Object.keys(conclusionStats).length > 0 ? `<div class="mb-3"><h4 class="font-medium text-gray-700 text-sm mb-2">Kết luận:</h4><div class="flex flex-wrap gap-2">${Object.entries(conclusionStats).map(([k, v]) => `<span class="text-xs px-3 py-1 rounded-full ${k === 'Đạt' || k === 'Tốt' || k === 'Xuất sắc' ? 'bg-green-100 text-green-700' : k === 'Không đạt' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'}">${k}: ${v}</span>`).join('')}</div></div>` : ''}${Object.keys(stats.avgRatings).length > 0 ? `<div class="space-y-2"><h4 class="font-medium text-gray-700 text-sm">Điểm TB:</h4>${Object.entries(stats.avgRatings).map(([k, v]) => `<div class="flex items-center gap-2"><div class="flex-1 text-sm text-gray-600 truncate">${k}</div><span class="font-bold ${v >= 4 ? 'text-green-600' : v >= 3 ? 'text-yellow-600' : 'text-red-600'}">${v}</span><span class="text-yellow-500">⭐</span><div class="w-16 h-2 bg-gray-200 rounded-full overflow-hidden"><div class="h-full ${v >= 4 ? 'bg-green-500' : v >= 3 ? 'bg-yellow-500' : 'bg-red-500'}" style="width: ${(v / 5) * 100}%"></div></div></div>`).join('')}</div>` : ''}</div>` : ''}<div class="bg-white rounded-2xl shadow-lg p-4"><div class="flex items-center justify-between mb-3 flex-wrap gap-2"><h3 class="font-bold text-gray-800 flex items-center gap-2"><i class="fas fa-list text-purple-500"></i>Danh sách (${filtered.length})</h3><div class="flex gap-2"><button onclick="exportToReport()" class="px-3 py-2 bg-blue-500 text-white rounded-xl text-sm flex items-center gap-1 hover:bg-blue-600"><i class="fas fa-file-alt"></i>Báo cáo</button><button onclick="exportToCSV()" class="px-3 py-2 bg-green-500 text-white rounded-xl text-sm flex items-center gap-1 hover:bg-green-600"><i class="fas fa-download"></i>CSV</button></div></div>${filtered.length === 0 ? `<div class="text-center py-8 text-gray-400"><i class="fas fa-clipboard-list text-4xl mb-2 opacity-50"></i><p>Chưa có</p></div>` : `<div class="space-y-2 max-h-96 overflow-y-auto">${filtered.map(s => { const info = getInfoDisplay(s); return `<div class="p-3 rounded-xl border ${hasNegativeFeedback(s) ? 'bg-red-50 border-red-200' : 'bg-gray-50 border-gray-100'}"><div class="flex items-start justify-between"><div><div class="font-medium text-gray-800">${info.name}</div><div class="text-sm text-gray-500">${info.sub}</div><div class="text-xs text-gray-400 mt-1">${s.questionSetName || ''} • ${formatDate(s.timestamp)}</div></div><div class="flex flex-col items-end gap-1">${s.conclusion ? getConclusionBadge(s.conclusion) : ''}${!s.telegramSent ? `<button onclick="sendTelegramById('${s.id}')" class="text-xs px-2 py-1 bg-blue-500 text-white rounded-full hover:bg-blue-600 flex items-center gap-1"><i class="fab fa-telegram"></i>Gửi TG</button>` : '<span class="text-xs px-2 py-1 bg-green-100 text-green-600 rounded-full"><i class="fas fa-check"></i> Đã gửi</span>'}${hasNegativeFeedback(s) ? '<span class="text-xs px-2 py-1 bg-red-100 text-red-600 rounded-full mt-1"><i class="fas fa-exclamation-triangle"></i></span>' : ''}</div></div><div class="mt-2 flex flex-wrap gap-1">${s.answers?.filter(a => a.type === 'rating').map(a => `<span class="text-xs px-2 py-0.5 rounded-full ${a.value <= 2 ? 'bg-red-100 text-red-700' : a.value === 3 ? 'bg-yellow-100 text-yellow-700' : 'bg-green-100 text-green-700'}">${a.value}⭐</span>`).join('')}</div></div>`; }).join('')}</div>`}</div></div>`;
+        };
+
+        const renderQuestions = () => {
+            const qSets = getSubsystemQuestionSets();
+            return `<div class="space-y-4 slide-up"><div class="bg-white rounded-2xl shadow-lg p-4"><h3 class="font-bold text-gray-800 mb-3 flex items-center gap-2"><i class="fas fa-plus text-blue-500"></i>Tạo bộ mới</h3><div class="space-y-3"><input type="text" id="newSetName" placeholder="Tên bộ câu hỏi..." class="w-full p-3 border border-gray-200 rounded-xl"><button onclick="createNewQS()" class="w-full py-3 ${APP.activeSubsystem === 'QLCL' ? 'btn-qlcl' : 'btn-tyc'} text-white rounded-xl font-medium"><i class="fas fa-plus mr-2"></i>Tạo</button></div></div><div class="bg-white rounded-2xl shadow-lg p-4"><h3 class="font-bold text-gray-800 mb-3">Danh sách (${qSets.length})</h3>${qSets.length === 0 ? `<div class="text-center py-8 text-gray-400"><i class="fas fa-folder-open text-4xl mb-2 opacity-50"></i><p>Chưa có</p></div>` : `<div class="space-y-3">${qSets.map(qs => `<div class="border border-gray-200 rounded-xl overflow-hidden"><div class="p-4 bg-gray-50 flex items-center justify-between"><div><h4 class="font-semibold text-gray-800">${qs.name}</h4><p class="text-sm text-gray-500">${qs.questions?.length || 0} câu hỏi</p></div><div class="flex gap-2"><button onclick="editQS('${qs.id}')" class="p-2 text-blue-500 hover:bg-blue-100 rounded-lg"><i class="fas fa-edit"></i></button>${!qs.isDefault ? `<button onclick="delQS('${qs.id}')" class="p-2 text-red-500 hover:bg-red-100 rounded-lg"><i class="fas fa-trash"></i></button>` : ''}</div></div><div class="p-3 space-y-2 max-h-40 overflow-y-auto">${qs.questions?.map((q, i) => `<div class="flex items-center gap-2 text-sm"><span class="w-5 h-5 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-xs">${i + 1}</span><span class="flex-1 text-gray-700 truncate">${q.text}</span><span class="text-xs px-2 py-0.5 rounded-full ${q.type === 'rating' ? 'bg-yellow-100 text-yellow-700' : q.type === 'yesno' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}">${q.type === 'rating' ? '⭐' : q.type === 'yesno' ? '✓✗' : '📝'}</span></div>`).join('')}</div></div>`).join('')}</div>`}</div></div>`;
+        };
+
+        window.createNewQS = async () => { const n = document.getElementById('newSetName').value.trim(); if (!n) { showNotification('Nhập tên!', 'error'); return; } const ok = await createQuestionSet(n, APP.activeSubsystem, [{ id: 1, text: 'Câu hỏi mẫu', type: 'rating', required: true }]); if (ok) { document.getElementById('newSetName').value = ''; render(); } };
+        window.editQS = (id) => { APP.editingQuestionSet = JSON.parse(JSON.stringify(APP.questionSets.find(qs => qs.id === id))); APP.currentModule = 'editQuestions'; render(); };
+        window.delQS = (id) => { if (confirm('Xóa?')) deleteQuestionSet(id); };
+
+        const renderEditQuestions = () => {
+            const qs = APP.editingQuestionSet;
+            if (!qs) { APP.currentModule = 'questions'; render(); return ''; }
+            if (!qs.infoFields) qs.infoFields = JSON.parse(JSON.stringify(DEFAULT_INFO_FIELDS));
+            if (!qs.type) qs.type = 'survey';
+            const isLuongGia = qs.type === 'luong_gia';
+            return `<div class="space-y-4 slide-up"><div class="bg-white rounded-2xl shadow-lg p-4"><div class="flex items-center justify-between mb-4"><h3 class="font-bold text-gray-800">Chỉnh sửa</h3><button onclick="APP.currentModule = 'questions'; APP.editingQuestionSet = null; render();" class="p-2 text-gray-500 hover:bg-gray-100 rounded-lg"><i class="fas fa-times"></i></button></div><input type="text" id="editSetName" value="${qs.name}" class="w-full p-3 border border-gray-200 rounded-xl mb-3"><select id="editSetType" class="w-full p-3 border border-gray-200 rounded-xl mb-3" onchange="APP.editingQuestionSet.type = this.value; if(this.value !== 'luong_gia') APP.editingQuestionSet.luongGiaCategory = null; render();"><option value="survey" ${qs.type === 'survey' ? 'selected' : ''}>📋 Khảo sát</option><option value="luong_gia" ${qs.type === 'luong_gia' ? 'selected' : ''}>📊 Lượng giá</option></select>${isLuongGia ? `<select class="w-full p-3 border border-gray-200 rounded-xl mb-3" onchange="APP.editingQuestionSet.luongGiaCategory = this.value; render();"><option value="">-- Chọn phân loại --</option>${LUONG_GIA_CATEGORIES.map(c => `<option value="${c.id}" ${qs.luongGiaCategory === c.id ? 'selected' : ''}>${c.icon} ${c.name}</option>`).join('')}</select>` : ''}</div><div class="bg-white rounded-2xl shadow-lg p-4"><h4 class="font-semibold text-gray-800 mb-3 flex items-center gap-2"><i class="fas fa-info-circle text-blue-500"></i>Trường thông tin (${qs.infoFields?.length || 0})</h4><div class="space-y-2 mb-3">${qs.infoFields?.map((f, i) => `<div class="p-3 bg-gray-50 rounded-xl flex items-center gap-2"><input type="text" value="${f.label}" onchange="APP.editingQuestionSet.infoFields[${i}].label = this.value;" class="flex-1 p-2 border border-gray-200 rounded-lg text-sm" placeholder="Tên trường"><select onchange="APP.editingQuestionSet.infoFields[${i}].type = this.value;" class="p-2 border border-gray-200 rounded-lg text-sm"><option value="text" ${f.type === 'text' ? 'selected' : ''}>Chữ</option><option value="date" ${f.type === 'date' ? 'selected' : ''}>Ngày</option><option value="number" ${f.type === 'number' ? 'selected' : ''}>Số</option><option value="select" ${f.type === 'select' ? 'selected' : ''}>Chọn PK</option></select><label class="flex items-center gap-1 text-sm"><input type="checkbox" ${f.required ? 'checked' : ''} onchange="APP.editingQuestionSet.infoFields[${i}].required = this.checked;" class="w-4 h-4">Bắt buộc</label><button onclick="rmInfoField(${i})" class="p-2 text-red-500 hover:bg-red-100 rounded-lg"><i class="fas fa-trash"></i></button></div>`).join('')}</div><div class="flex gap-2"><button onclick="addInfoField()" class="flex-1 py-2 border-2 border-dashed border-gray-300 rounded-xl text-gray-500 hover:border-blue-500 hover:text-blue-500 text-sm"><i class="fas fa-plus mr-1"></i>Thêm trường</button><button onclick="resetInfoFields()" class="px-3 py-2 bg-gray-100 text-gray-600 rounded-xl text-sm hover:bg-gray-200">Reset mặc định</button></div></div><div class="bg-white rounded-2xl shadow-lg p-4"><h4 class="font-semibold text-gray-800 mb-3">Thêm ${isLuongGia ? 'nội dung' : 'câu hỏi'}</h4><div class="space-y-3"><textarea id="newQText" placeholder="Nội dung..." class="w-full p-3 border border-gray-200 rounded-xl" rows="2"></textarea><div class="flex flex-wrap gap-3"><select id="newQType" class="flex-1 min-w-32 p-2 border border-gray-200 rounded-xl"><option value="rating">⭐ Sao</option><option value="yesno">✓✗ Có/Không</option><option value="text">📝 Văn bản</option></select><label class="flex items-center gap-2 px-3 py-2 bg-gray-50 rounded-xl"><input type="checkbox" id="newQReq" checked class="w-4 h-4"><span class="text-sm">Bắt buộc</span></label><button onclick="addQToSet()" class="px-4 py-2 bg-blue-500 text-white rounded-xl"><i class="fas fa-plus"></i></button></div></div></div><div class="bg-white rounded-2xl shadow-lg p-4"><h4 class="font-semibold text-gray-800 mb-3">${isLuongGia ? 'Nội dung' : 'Câu hỏi'} (${qs.questions?.length || 0})</h4><div class="space-y-2">${qs.questions?.map((q, i) => `<div class="p-3 bg-gray-50 rounded-xl"><div class="flex items-start gap-3 mb-2"><span class="w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0">${i + 1}</span><textarea onchange="editQText(${q.id}, this.value)" class="flex-1 p-2 border border-gray-200 rounded-lg text-sm" rows="2">${q.text}</textarea><button onclick="rmQFromSet(${q.id})" class="p-2 text-red-500 hover:bg-red-100 rounded-lg flex-shrink-0"><i class="fas fa-trash"></i></button></div><div class="flex items-center gap-3 ml-9"><select onchange="editQType(${q.id}, this.value)" class="p-2 border border-gray-200 rounded-lg text-sm"><option value="rating" ${q.type === 'rating' ? 'selected' : ''}>⭐ Sao</option><option value="yesno" ${q.type === 'yesno' ? 'selected' : ''}>✓✗ Có/Không</option><option value="text" ${q.type === 'text' ? 'selected' : ''}>📝 Văn bản</option></select><label class="flex items-center gap-1 text-sm"><input type="checkbox" ${q.required ? 'checked' : ''} onchange="editQReq(${q.id}, this.checked)" class="w-4 h-4">Bắt buộc</label></div></div>`).join('')}</div></div><button onclick="saveQSChanges()" class="w-full py-3 btn-primary text-white rounded-xl font-medium"><i class="fas fa-save mr-2"></i>Lưu</button></div>`;
+        };
+
+        window.addInfoField = () => { const maxId = 'field_' + Date.now(); APP.editingQuestionSet.infoFields.push({ id: maxId, label: 'Trường mới', type: 'text', required: false }); render(); };
+        window.rmInfoField = (i) => { if (APP.editingQuestionSet.infoFields.length <= 1) { showNotification('Cần ít nhất 1 trường!', 'error'); return; } APP.editingQuestionSet.infoFields.splice(i, 1); render(); };
+        window.resetInfoFields = () => { APP.editingQuestionSet.infoFields = JSON.parse(JSON.stringify(DEFAULT_INFO_FIELDS)); render(); };
+
+        window.addQToSet = () => { const t = document.getElementById('newQText').value.trim(); if (!t) { showNotification('Nhập nội dung!', 'error'); return; } const maxId = Math.max(0, ...APP.editingQuestionSet.questions.map(q => q.id)); APP.editingQuestionSet.questions.push({ id: maxId + 1, text: t, type: document.getElementById('newQType').value, required: document.getElementById('newQReq').checked }); document.getElementById('newQText').value = ''; render(); };
+        window.rmQFromSet = (id) => { if (APP.editingQuestionSet.questions.length <= 1) { showNotification('Cần ít nhất 1!', 'error'); return; } APP.editingQuestionSet.questions = APP.editingQuestionSet.questions.filter(q => q.id !== id); render(); };
+        window.editQText = (id, text) => { const q = APP.editingQuestionSet.questions.find(q => q.id === id); if (q) q.text = text; };
+        window.editQType = (id, type) => { const q = APP.editingQuestionSet.questions.find(q => q.id === id); if (q) q.type = type; };
+        window.editQReq = (id, req) => { const q = APP.editingQuestionSet.questions.find(q => q.id === id); if (q) q.required = req; };
+        window.saveQSChanges = async () => { const n = document.getElementById('editSetName').value.trim(); if (!n) { showNotification('Nhập tên!', 'error'); return; } const qs = APP.editingQuestionSet; await updateQuestionSet(qs.id, { name: n, type: qs.type, luongGiaCategory: qs.luongGiaCategory || null, infoFields: qs.infoFields, questions: qs.questions }); APP.editingQuestionSet = null; APP.currentModule = 'questions'; render(); };
+
+        const renderUsers = () => `<div class="space-y-4 slide-up"><div class="bg-white rounded-2xl shadow-lg p-4"><h3 class="font-bold text-gray-800 mb-3 flex items-center gap-2"><i class="fas fa-user-plus text-blue-500"></i>Tạo tài khoản</h3><div class="space-y-3"><input type="text" id="newUName" placeholder="Họ tên..." class="w-full p-3 border border-gray-200 rounded-xl"><input type="text" id="newUUsername" placeholder="Tên đăng nhập..." class="w-full p-3 border border-gray-200 rounded-xl"><div class="relative"><input type="password" id="newUPwd" placeholder="Mật khẩu..." class="w-full p-3 border border-gray-200 rounded-xl pr-10"><button type="button" onclick="togglePwd('newUPwd')" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"><i class="fas fa-eye"></i></button></div><select id="newURole" class="w-full p-3 border border-gray-200 rounded-xl"><option value="">-- Chọn quyền --</option><option value="admin">👑 Admin</option><option value="qlcl">📋 Phòng QLCL</option><option value="tyc">🩺 BQL Khám TYC</option></select><button onclick="handleCreateU()" class="w-full py-3 btn-primary text-white rounded-xl font-medium"><i class="fas fa-plus mr-2"></i>Tạo</button></div></div><div class="bg-white rounded-2xl shadow-lg p-4"><h3 class="font-bold text-gray-800 mb-3">Danh sách (${APP.users.length})</h3><div class="space-y-2">${APP.users.map(u => `<div class="p-3 bg-gray-50 rounded-xl"><div class="flex items-center justify-between"><div><div class="font-medium text-gray-800">${u.name}</div><div class="text-sm text-gray-500">@${u.username}</div><span class="text-xs px-2 py-0.5 rounded-full ${u.role === 'admin' ? 'bg-purple-100 text-purple-700' : u.role === 'qlcl' ? 'bg-blue-100 text-blue-700' : 'bg-pink-100 text-pink-700'}">${u.role === 'admin' ? '👑 Admin' : u.role === 'qlcl' ? '📋 QLCL' : '🩺 TYC'}</span></div><div class="flex gap-1"><button onclick="changePwdModal('${u.id}')" class="p-2 text-blue-500 hover:bg-blue-100 rounded-lg" title="Đổi mật khẩu"><i class="fas fa-key"></i></button>${u.id !== 'admin' && u.id !== APP.currentUser.id ? `<button onclick="delU('${u.id}')" class="p-2 text-red-500 hover:bg-red-100 rounded-lg"><i class="fas fa-trash"></i></button>` : ''}</div></div></div>`).join('')}</div></div></div>`;
+
+        window.handleCreateU = async () => { const n = document.getElementById('newUName').value.trim(); const u = document.getElementById('newUUsername').value.trim(); const p = document.getElementById('newUPwd').value; const r = document.getElementById('newURole').value; if (!n || !u || !p || !r) { showNotification('Điền đầy đủ!', 'error'); return; } if (p.length < 6) { showNotification('Mật khẩu tối thiểu 6 ký tự!', 'error'); return; } const ok = await createUser(u, p, n, r); if (ok) { document.getElementById('newUName').value = ''; document.getElementById('newUUsername').value = ''; document.getElementById('newUPwd').value = ''; document.getElementById('newURole').value = ''; render(); } };
+        window.delU = (id) => { if (confirm('Xóa?')) deleteUser(id); };
+        window.changePwdModal = (id) => { const p = prompt('Mật khẩu mới (min 6 ký tự):'); if (p) { if (p.length < 6) { showNotification('Tối thiểu 6 ký tự!', 'error'); return; } changePassword(id, p); } };
+
+        const renderSettings = () => `<div class="space-y-4 slide-up"><div class="bg-white rounded-2xl shadow-lg p-4"><div class="flex items-center gap-4"><div class="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center"><i class="fas fa-user text-white text-2xl"></i></div><div><div class="font-bold text-gray-800">${APP.currentUser?.name}</div><div class="text-sm text-gray-500">@${APP.currentUser?.username}</div><span class="text-xs px-2 py-1 rounded-full ${APP.currentUser?.role === 'admin' ? 'bg-purple-100 text-purple-700' : APP.currentUser?.role === 'qlcl' ? 'bg-blue-100 text-blue-700' : 'bg-pink-100 text-pink-700'}">${APP.currentUser?.role === 'admin' ? '👑 Admin' : APP.currentUser?.role === 'qlcl' ? '📋 QLCL' : '🩺 TYC'}</span></div></div></div>${APP.currentUser?.role === 'admin' ? `<div class="bg-white rounded-2xl shadow-lg p-4"><h3 class="font-bold text-gray-800 mb-3 flex items-center gap-2"><i class="fab fa-telegram text-blue-500"></i>Telegram</h3><div class="space-y-3"><div><label class="block text-sm font-medium text-gray-600 mb-1">Bot Token</label><input type="text" id="tgToken" value="${APP.config.telegramBotToken}" placeholder="Bot Token..." class="w-full p-3 border border-gray-200 rounded-xl font-mono text-sm"></div><div><label class="block text-sm font-medium text-gray-600 mb-1">Chat ID</label><input type="text" id="tgChatId" value="${APP.config.telegramChatId}" placeholder="Chat ID..." class="w-full p-3 border border-gray-200 rounded-xl font-mono text-sm"></div><button onclick="saveTgConfig()" class="w-full py-3 bg-blue-500 text-white rounded-xl font-medium"><i class="fas fa-save mr-2"></i>Lưu</button></div></div><div class="bg-white rounded-2xl shadow-lg p-4"><h3 class="font-bold text-gray-800 mb-3 flex items-center gap-2"><i class="fas fa-hospital text-green-500"></i>Phòng khám (${APP.clinics.length})</h3><div class="space-y-2 max-h-48 overflow-y-auto mb-3">${APP.clinics.map(c => `<div class="flex items-center gap-2"><input type="text" value="${c.name}" onchange="updClinic('${c.id}', this.value)" class="flex-1 p-2 border border-gray-200 rounded-xl"><button onclick="delClinic('${c.id}')" class="p-2 text-red-500 hover:bg-red-100 rounded-xl"><i class="fas fa-trash"></i></button></div>`).join('')}</div><button onclick="addClinicBtn()" class="w-full py-2 border-2 border-dashed border-gray-300 rounded-xl text-gray-500 hover:border-blue-500 hover:text-blue-500"><i class="fas fa-plus mr-2"></i>Thêm</button></div>` : ''}<button onclick="changePwdModal('${APP.currentUser?.id}')" class="w-full py-3 bg-blue-100 text-blue-600 rounded-xl font-medium hover:bg-blue-200"><i class="fas fa-key mr-2"></i>Đổi mật khẩu</button><button onclick="logout()" class="w-full py-3 bg-red-100 text-red-600 rounded-xl font-medium hover:bg-red-200"><i class="fas fa-sign-out-alt mr-2"></i>Đăng xuất</button><div class="text-center text-gray-400 text-sm py-4"><p class="font-semibold">Lượng giá - Khảo sát v2.0</p><p>${APP.config.hospitalName}</p><p class="text-xs mt-1">Phòng Quản lý Chất lượng</p><p class="text-xs">Tác giả: BS. Kiều Việt Tiến Hưng</p></div></div>`;
+
+        window.saveTgConfig = async () => { APP.config.telegramBotToken = document.getElementById('tgToken').value; APP.config.telegramChatId = document.getElementById('tgChatId').value; await saveConfig(); };
+        window.addClinicBtn = () => addClinic('Phòng khám mới');
+        window.updClinic = (id, n) => updateClinic(id, n);
+        window.delClinic = (id) => { if (APP.clinics.length <= 1) { showNotification('Cần ít nhất 1!', 'error'); return; } if (confirm('Xóa?')) deleteClinic(id); };
+
+        // ===================== MAIN RENDER =====================
+        const render = () => {
+            if (!APP.currentUser) { document.getElementById('app').innerHTML = renderLogin(); return; }
+            let content = '';
+            switch (APP.currentModule) {
+                case 'home': content = renderHome(); break;
+                case 'survey': content = renderSurveyForm(); break;
+                case 'results': content = renderResults(); break;
+                case 'questions': content = renderQuestions(); break;
+                case 'editQuestions': content = renderEditQuestions(); break;
+                case 'users': content = renderUsers(); break;
+                case 'settings': content = renderSettings(); break;
+            }
+            const navItems = [{ id: 'home', icon: 'fa-home', label: 'Trang chủ' }, { id: 'results', icon: 'fa-chart-bar', label: 'Báo cáo' }, { id: 'questions', icon: 'fa-clipboard-list', label: 'Câu hỏi' }];
+            if (APP.currentUser.role === 'admin') navItems.push({ id: 'users', icon: 'fa-users', label: 'Tài khoản' });
+            navItems.push({ id: 'settings', icon: 'fa-cog', label: 'Cài đặt' });
+
+            document.getElementById('app').innerHTML = `
+                <div class="bg-gradient-to-r ${APP.activeSubsystem === 'QLCL' ? 'from-blue-600 to-cyan-600' : 'from-purple-600 to-pink-600'} text-white p-4 shadow-lg sticky top-0 z-40 safe-top"><div class="max-w-lg mx-auto"><h1 class="text-lg font-bold text-center">🏥 Lượng giá - Khảo sát</h1><p class="text-center text-white/80 text-sm">${APP.config.hospitalName}</p><p class="text-center text-white/60 text-xs">Phòng Quản lý Chất lượng</p></div></div>
+                ${APP.currentUser.role === 'admin' ? `<div class="max-w-lg mx-auto px-4 pt-4"><div class="bg-white rounded-2xl shadow-lg p-1 flex gap-1"><button onclick="APP.activeSubsystem = 'QLCL'; APP.selectedQuestionSet = null; render();" class="flex-1 py-3 rounded-xl font-medium transition-all ${APP.activeSubsystem === 'QLCL' ? 'btn-qlcl text-white shadow-md' : 'text-gray-600 hover:bg-gray-100'}">📋 Phòng QLCL</button><button onclick="APP.activeSubsystem = 'TYC'; APP.selectedQuestionSet = null; render();" class="flex-1 py-3 rounded-xl font-medium transition-all ${APP.activeSubsystem === 'TYC' ? 'btn-tyc text-white shadow-md' : 'text-gray-600 hover:bg-gray-100'}">🩺 BQL Khám TYC</button></div></div>` : `<div class="max-w-lg mx-auto px-4 pt-4"><div class="bg-white rounded-2xl shadow-lg p-3 text-center"><span class="font-bold ${APP.activeSubsystem === 'QLCL' ? 'text-blue-600' : 'text-purple-600'}">${APP.activeSubsystem === 'QLCL' ? '📋 Phòng QLCL' : '🩺 BQL Khám TYC'}</span></div></div>`}
+                <div class="max-w-lg mx-auto px-4 py-4 pb-24">${content}<div class="text-center text-gray-400 text-xs py-4 mt-4 border-t border-gray-100">Tác giả: BS. Kiều Việt Tiến Hưng</div></div>
+                <div class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg z-40 safe-bottom"><div class="max-w-lg mx-auto flex">${navItems.map(item => `<button onclick="APP.currentModule = '${item.id}'; render();" class="flex-1 py-3 flex flex-col items-center gap-1 transition-colors ${APP.currentModule === item.id || (item.id === 'questions' && APP.currentModule === 'editQuestions') ? (APP.activeSubsystem === 'QLCL' ? 'text-blue-600 bg-blue-50' : 'text-purple-600 bg-purple-50') : 'text-gray-500 hover:text-gray-700'}"><i class="fas ${item.icon} text-xl"></i><span class="text-xs">${item.label}</span></button>`).join('')}</div></div>
+                ${APP.loading ? `<div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50"><div class="bg-white rounded-2xl p-6 text-center"><i class="fas fa-spinner spinner text-3xl text-blue-500 mb-2"></i><p class="text-gray-600">Đang xử lý...</p></div></div>` : ''}
+                ${APP.notification ? `<div class="fixed top-20 left-4 right-4 max-w-lg mx-auto p-4 rounded-xl shadow-lg flex items-center gap-3 toast ${APP.notification.type === 'error' ? 'bg-red-500' : 'bg-green-500'} text-white z-50"><i class="fas ${APP.notification.type === 'error' ? 'fa-exclamation-triangle' : 'fa-check-circle'}"></i><span>${APP.notification.message}</span></div>` : ''}
+            `;
+        };
+
+        // ===================== INIT =====================
+        const init = async () => {
+            if (!firebaseReady) {
+                document.getElementById('app').innerHTML = `<div class="min-h-screen flex items-center justify-center p-4"><div class="bg-white rounded-3xl shadow-xl p-8 max-w-md"><div class="text-center mb-6"><div class="w-20 h-20 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4"><i class="fas fa-exclamation-triangle text-yellow-500 text-3xl"></i></div><h2 class="text-xl font-bold text-gray-800">Cấu hình Firebase</h2></div><div class="bg-gray-50 rounded-xl p-4 text-sm text-gray-600 space-y-2"><p>1. Tạo project tại <a href="https://console.firebase.google.com" target="_blank" class="text-blue-500">Firebase Console</a></p><p>2. Tạo Firestore Database</p><p>3. Copy cấu hình vào file HTML</p><p>4. Mở lại ứng dụng</p></div><div class="mt-4 p-3 bg-green-50 rounded-xl border border-green-200"><p class="text-xs text-green-700"><i class="fas fa-check-circle mr-1"></i>Không cần bật Authentication!</p></div></div></div>`;
+                return;
+            }
+            try { await initializeAdmin(); const ok = await checkSession(); if (ok) await loadAllData(); } catch (e) { console.error('Init:', e); }
+            render();
+        };
+
+        init();
+    </script>
+</body>
+
+</html>
