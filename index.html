@@ -306,7 +306,6 @@
             APP.currentModule = 'home';
             localStorage.removeItem('survey_session');
             showNotification('Đã đăng xuất!');
-            render();
         };
 
         // ===================== USER MANAGEMENT =====================
@@ -789,24 +788,13 @@
         const renderYesNo = (v, qId) => `<div class="flex gap-4 justify-center"><button type="button" onclick="setYesNo(${qId}, 'yes')" class="px-6 py-3 rounded-xl font-medium transition-all ${v === 'yes' ? 'bg-green-500 text-white shadow-lg scale-105' : 'bg-gray-100 text-gray-600 hover:bg-green-100'}"><i class="fas fa-check mr-2"></i>Có</button><button type="button" onclick="setYesNo(${qId}, 'no')" class="px-6 py-3 rounded-xl font-medium transition-all ${v === 'no' ? 'bg-red-500 text-white shadow-lg scale-105' : 'bg-gray-100 text-gray-600 hover:bg-red-100'}"><i class="fas fa-times mr-2"></i>Không</button></div>`;
         const renderScoring = (v, qId) => `<div class="flex flex-wrap gap-2 justify-center"><button type="button" onclick="setScoring(${qId}, '2')" class="flex-1 py-2 px-1 rounded-xl font-medium text-sm transition-all ${v === '2' ? 'bg-green-500 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-green-100'}">Đạt (2đ)</button><button type="button" onclick="setScoring(${qId}, '1')" class="flex-1 py-2 px-1 rounded-xl font-medium text-sm transition-all ${v === '1' ? 'bg-yellow-500 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-yellow-100'}">Đạt 1 phần (1đ)</button><button type="button" onclick="setScoring(${qId}, '0')" class="flex-1 py-2 px-1 rounded-xl font-medium text-sm transition-all ${v === '0' ? 'bg-red-500 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-red-100'}">Không đạt (0đ)</button><button type="button" onclick="setScoring(${qId}, 'na')" class="flex-1 py-2 px-1 rounded-xl font-medium text-sm transition-all ${v === 'na' ? 'bg-gray-600 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}">K.Áp dụng</button></div>`;
 
-        const renderLogin = () => `
-            <div class="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-blue-500 to-purple-600">
-                <div class="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-md slide-up">
-                    <div class="text-center mb-8">
-                        <div class="w-20 h-20 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg"><i class="fas fa-hospital text-white text-3xl"></i></div>
-                        <h1 class="text-2xl font-bold text-gray-800">Lượng giá - Khảo sát</h1>
-                        <p class="text-gray-500">${APP.config.hospitalName}</p>
-                        <p class="text-sm text-gray-400 mt-1">Phòng Quản lý Chất lượng</p>
-                        <p class="text-xs text-gray-400">Tác giả: BS. Kiều Việt Tiến Hưng</p>
-                    </div>
-                    <div class="space-y-4">
-                        <div><label class="block text-sm font-medium text-gray-600 mb-1">Tên đăng nhập</label><input type="text" id="loginUsername" placeholder="Nhập tên đăng nhập..." class="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500"></div>
-                        <div><label class="block text-sm font-medium text-gray-600 mb-1">Mật khẩu</label><div class="relative"><input type="password" id="loginPassword" placeholder="Nhập mật khẩu..." onkeypress="if(event.key==='Enter') handleLogin();" class="w-full p-3 border border-gray-200 rounded-xl pr-10"><button type="button" onclick="togglePwd('loginPassword')" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"><i class="fas fa-eye"></i></button></div></div>
-                        <button onclick="handleLogin()" class="w-full py-4 btn-primary text-white rounded-xl font-bold text-lg hover:shadow-lg"><i class="fas fa-sign-in-alt mr-2"></i>Đăng nhập</button>
-                    </div>
-                </div>
-            </div>
-        `;
+        const renderLogin = (u, p) => {
+            u = u || ''; p = p || '';
+            let html = '<div class="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-blue-500 to-purple-600"><div class="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-md slide-up"><div class="text-center mb-8"><div class="w-20 h-20 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg"><i class="fas fa-hospital text-white text-3xl"></i></div><h1 class="text-2xl font-bold text-gray-800">Lượng giá - Khảo sát</h1><p class="text-gray-500">' + APP.config.hospitalName + '</p><p class="text-sm text-gray-400 mt-1">Phòng Quản lý Chất lượng</p><p class="text-xs text-gray-400">Tác giả: BS. Kiều Việt Tiến Hưng</p></div><div class="space-y-4"><div><label class="block text-sm font-medium text-gray-600 mb-1">Tên đăng nhập</label><input type="text" id="loginUsername" value="' + u + '" placeholder="Nhập tên đăng nhập..." class="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500"></div><div><label class="block text-sm font-medium text-gray-600 mb-1">Mật khẩu</label><div class="relative"><input type="password" id="loginPassword" value="' + p + '" placeholder="Nhập mật khẩu..." onkeypress="if(event.key===\'Enter\') handleLogin();" class="w-full p-3 border border-gray-200 rounded-xl pr-10"><button type="button" onclick="togglePwd(\'loginPassword\')" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"><i class="fas fa-eye"></i></button></div></div><button onclick="handleLogin()" class="w-full py-4 btn-primary text-white rounded-xl font-bold text-lg hover:shadow-lg"><i class="fas fa-sign-in-alt mr-2"></i>Đăng nhập</button></div></div></div>';
+            if (APP.loading) html += '<div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50"><div class="bg-white rounded-2xl p-6 text-center"><i class="fas fa-spinner spinner text-3xl text-blue-500 mb-2"></i><p class="text-gray-600">Đang xử lý...</p></div></div>';
+            if (APP.notification) html += '<div class="fixed top-20 left-4 right-4 max-w-lg mx-auto p-4 rounded-xl shadow-lg flex items-center gap-3 toast ' + (APP.notification.type === 'error' ? 'bg-red-500' : 'bg-green-500') + ' text-white z-50"><i class="fas ' + (APP.notification.type === 'error' ? 'fa-exclamation-triangle' : 'fa-check-circle') + '"></i><span>' + APP.notification.message + '</span></div>';
+            return html;
+        };
 
         window.togglePwd = (id) => { const i = document.getElementById(id); const ic = i.nextElementSibling.querySelector('i'); if (i.type === 'password') { i.type = 'text'; ic.className = 'fas fa-eye-slash'; } else { i.type = 'password'; ic.className = 'fas fa-eye'; } };
         window.handleLogin = async () => { const u = document.getElementById('loginUsername').value; const p = document.getElementById('loginPassword').value; if (!u || !p) { showNotification('Nhập đầy đủ!', 'error'); return; } await login(u, p); render(); };
@@ -994,7 +982,25 @@
 
         // ===================== MAIN RENDER =====================
         const render = () => {
-            if (!APP.currentUser) { document.getElementById('app').innerHTML = renderLogin(); return; }
+            if (!APP.currentUser) { 
+                const u = document.getElementById('loginUsername')?.value || '';
+                const p = document.getElementById('loginPassword')?.value || '';
+                const focused = document.activeElement?.id;
+                
+                document.getElementById('app').innerHTML = renderLogin(u, p); 
+                
+                if (focused && (focused === 'loginUsername' || focused === 'loginPassword')) {
+                    const el = document.getElementById(focused);
+                    if (el) {
+                        el.focus();
+                        if (el.setSelectionRange) {
+                            const len = el.value.length;
+                            el.setSelectionRange(len, len);
+                        }
+                    }
+                }
+                return; 
+            }
             let content = '';
             switch (APP.currentModule) {
                 case 'home': content = renderHome(); break;
